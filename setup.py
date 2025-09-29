@@ -7,7 +7,7 @@ setup(
     version='0.0.0',
     packages=find_packages(exclude=['test']),
      data_files=[
-        ('share/' + package_name + '/launch', glob('launch/*.launch.py')),
+        #('share/' + package_name + '/launch', glob('launch/*.launch.py')),
         ('share/' + package_name, ['package.xml']),
     ],
     install_requires=['setuptools'],
