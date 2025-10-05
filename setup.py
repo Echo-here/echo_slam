@@ -1,14 +1,16 @@
-from setuptools import find_packages, setup
+from setuptools import setup
+from glob import glob
 
 package_name = 'echo_slam'
 
 setup(
     name=package_name,
     version='0.0.0',
-    packages=find_packages(exclude=['test']),
+    packages=[package_name],
      data_files=[
-        #('share/' + package_name + '/launch', glob('launch/*.launch.py')),
+        ('share/' + package_name + '/launch', glob('launch/*.launch.py')),
         ('share/' + package_name, ['package.xml']),
+        ('share/' + package_name +'/config', glob('config/*.yaml') )
     ],
     install_requires=['setuptools'],
     zip_safe=True,
@@ -19,6 +21,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+            'dummy_odom_node=echo_slam.dummy_odom_node:main'
         ],
     },
 )
