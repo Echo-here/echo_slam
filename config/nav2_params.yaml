@@ -32,13 +32,26 @@ local_costmap:
       use_sim_time: true
       global_frame: "odom"
       robot_base_frame: "base_link"
-      plugins: ["voxel_layer", "inflation_layer"]
+      plugins: ["voxel_layer", "safety_layer", "inflation_layer"]
+      
       voxel_layer:
         plugin: "nav2_costmap_2d::VoxelLayer"
         enabled: true
         observation_sources: scan
         scan:
           topic: /scan
+          
+      safety_layer:          # <- Safety Layer 추가
+        plugin: "nav2_costmap_2d::ObstacleLayer"
+        observation_sources: scan
+        scan:
+          topic: /scan
+          data_type: LaserScan
+          marking: true
+          clearing: true
+          obstacle_max_range: 1.5   # 근거리 안전 영역
+          obstacle_min_range: 0.05
+          
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         inflation_radius: 0.7
@@ -49,15 +62,29 @@ global_costmap:
       use_sim_time: true
       global_frame: "map"
       robot_base_frame: "base_link"
-      plugins: ["static_layer", "obstacle_layer", "inflation_layer"]
+      plugins: ["static_layer", "obstacle_layer", "safety_layer", "inflation_layer"]
+
+      static_layer:
+        plugin: "nav2_costmap_2d::StaticLayer"
+        map_subscribe_transient_local: true
+
       obstacle_layer:
         plugin: "nav2_costmap_2d::ObstacleLayer"
         observation_sources: scan
         scan:
           topic: /scan
-      static_layer:
-        plugin: "nav2_costmap_2d::StaticLayer"
-        map_subscribe_transient_local: true
+
+      safety_layer:          # <- Safety Layer 추가
+        plugin: "nav2_costmap_2d::ObstacleLayer"
+        observation_sources: scan
+        scan:
+          topic: /scan
+          data_type: LaserScan
+          marking: true
+          clearing: true
+          obstacle_max_range: 1.5
+          obstacle_min_range: 0.05
+
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         inflation_radius: 0.7
