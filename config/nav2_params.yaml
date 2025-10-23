@@ -10,7 +10,7 @@ planner_server:
     use_sim_time: true
     planner_plugins: ["GridBased"]
     GridBased:
-      plugin: "nav2_navfn_planner/NavfnPlanner"   # <- Humble 기준 정확한 이름
+      plugin: "nav2_navfn_planner/NavfnPlanner"
       tolerance: 0.5
       use_astar: false
       allow_unknown: true
@@ -32,7 +32,7 @@ local_costmap:
       use_sim_time: true
       global_frame: "odom"
       robot_base_frame: "base_link"
-      plugins: ["voxel_layer", "safety_layer", "inflation_layer"]
+      plugins: ["voxel_layer", "inflation_layer"]
       
       voxel_layer:
         plugin: "nav2_costmap_2d::VoxelLayer"
@@ -40,17 +40,6 @@ local_costmap:
         observation_sources: scan
         scan:
           topic: /scan
-          
-      safety_layer:          # <- Safety Layer 추가
-        plugin: "nav2_costmap_2d::ObstacleLayer"
-        observation_sources: scan
-        scan:
-          topic: /scan
-          data_type: LaserScan
-          marking: true
-          clearing: true
-          obstacle_max_range: 1.5   # 근거리 안전 영역
-          obstacle_min_range: 0.05
           
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
@@ -62,7 +51,7 @@ global_costmap:
       use_sim_time: true
       global_frame: "map"
       robot_base_frame: "base_link"
-      plugins: ["static_layer", "obstacle_layer", "safety_layer", "inflation_layer"]
+      plugins: ["static_layer", "obstacle_layer", "inflation_layer"]
 
       static_layer:
         plugin: "nav2_costmap_2d::StaticLayer"
@@ -73,17 +62,6 @@ global_costmap:
         observation_sources: scan
         scan:
           topic: /scan
-
-      safety_layer:          # <- Safety Layer 추가
-        plugin: "nav2_costmap_2d::ObstacleLayer"
-        observation_sources: scan
-        scan:
-          topic: /scan
-          data_type: LaserScan
-          marking: true
-          clearing: true
-          obstacle_max_range: 1.5
-          obstacle_min_range: 0.05
 
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
