@@ -48,8 +48,8 @@ def generate_launch_description():
         # 5️⃣ Nav2 Lifecycle Manager
         Node(
             package='nav2_lifecycle_manager',
-            executable='lifecycle_manager_navigation',
-            name='lifecycle_manager_navigation',
+            executable='lifecycle_manager',
+            name='lifecycle_manager',
             output='screen',
             parameters=[{
                 'use_sim_time': False,
