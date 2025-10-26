@@ -15,6 +15,7 @@ def generate_launch_description():
     slam_params_file = os.path.join(pkg_share, 'config', 'slam_params.yaml')
     nav2_params_file = os.path.join(pkg_share, 'config', 'nav2_params.yaml')
     slam_nav2_params_file = os.path.join(pkg_share, 'config', 'slam_nav2_params.yaml')
+    nav2_map = os.path.join(pkg_share, 'map', 'map.yaml')
 
     return LaunchDescription([
         IncludeLaunchDescription(
@@ -29,7 +30,7 @@ def generate_launch_description():
                 "use_sim_time": "False",
                 "slam": "True",
                 "params_file": slam_nav2_params_file,
-                "map": ""
+                "map": nav2_map
             }.items()
         ),
         # 1️⃣ SLAM Toolbox
