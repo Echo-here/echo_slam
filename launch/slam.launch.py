@@ -33,6 +33,19 @@ def generate_launch_description():
                 "map": ""
             }.items()
         ),
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource([
+                PathJoinSubstitution([
+                    FindPackageShare("nav2_bringup"),
+                    "launch",
+                    "bringup_launch.py"
+                ])
+            ]),
+            launch_arguments={
+                "use_sim_time": "False",
+                "map": ""
+            }.items()
+        ),
         Node(
             package='echo_slam',
             executable='map_utils_node',
