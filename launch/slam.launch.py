@@ -23,12 +23,12 @@ def generate_launch_description():
                 PathJoinSubstitution([
                     FindPackageShare("nav2_bringup"),
                     "launch",
-                    "bringup_launch.py"
+                    "slam_launch.py"
                 ])
             ]),
             launch_arguments={
                 "use_sim_time": "False",
-                "slam": "True",
+                "autostart": "True",
                 "params_file": slam_nav2_params_file,
                 "map": ""
             }.items()
