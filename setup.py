@@ -23,6 +23,7 @@ setup(
     entry_points={
         'console_scripts': [
             'dummy_odom_node=echo_slam.dummy_odom_node:main'
+            'map_utils_node=echo_slam.map_utils_node:main'
         ],
     },
 )
