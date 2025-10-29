@@ -35,7 +35,7 @@ def generate_launch_description():
         ),
         Node(
             package='echo_slam',
-            executable='map_utils_node.py',
+            executable='map_utils_node',
             name='map_utils',
             output='screen'
         )
