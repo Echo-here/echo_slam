@@ -33,6 +33,12 @@ def generate_launch_description():
                 "map": nav2_map
             }.items()
         ),
+        Node(
+            package='echo_slam',
+            executable='map_utils_node.py',
+            name='map_utils',
+            output='screen'
+        )
         # 1️⃣ SLAM Toolbox
         # Node(
         #     package='slam_toolbox',
