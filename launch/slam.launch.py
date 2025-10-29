@@ -29,26 +29,6 @@ def generate_launch_description():
             }.items()
         ),
 
-        # 2️⃣ Nav2 bringup은 10초 delay 후 실행
-        TimerAction(
-            period=10.0,  # 10초 delay
-            actions=[
-                IncludeLaunchDescription(
-                    PythonLaunchDescriptionSource([
-                        PathJoinSubstitution([
-                            FindPackageShare("nav2_bringup"),
-                            "launch",
-                            "bringup_launch.py"
-                        ])
-                    ]),
-                    launch_arguments={
-                        "use_sim_time": "False",
-                        "map": "/"
-                    }.items()
-                )
-            ]
-        ),
-
         # 3️⃣ map_utils_node 바로 실행
         Node(
             package='echo_slam',
