@@ -3,7 +3,7 @@ import os
 import json
 import rclpy
 from rclpy.node import Node
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, Twist
 import paho.mqtt.client as mqtt
 from tf_transformations import euler_from_quaternion, quaternion_from_euler
 
@@ -12,12 +12,19 @@ MQTT_BROKER = os.getenv("MQTT_BROKER", "localhost")
 MQTT_PORT = int(os.getenv("MQTT_PORT", 1883))
 MQTT_TOPIC_RECORD = os.getenv("MQTT_TOPIC_RECORD", "echo/record")
 MQTT_TOPIC_GO = os.getenv("MQTT_TOPIC_GO", "echo/go")
+MQTT_TOPIC_TELEOP = os.getenv("MQTT_TOPIC_TELEOP", "echo/teleop")
+
 
 class MQTTGoalMemoryNode(Node):
     def __init__(self):
         super().__init__('mqtt_goal_memory_node')
+        
+        # 기존 goal publisher
         self.goal_pub = self.create_publisher(PoseStamped, 'goal_pose', 10)
         
+        # 추가된 teleop publisher
+        self.cmd_vel_pub = self.create_publisher(Twist, 'cmd_vel', 10)
+
         self.memory = {}  # {name: PoseStamped}
 
         self.mqtt_client = mqtt.Client()
@@ -32,35 +39,77 @@ class MQTTGoalMemoryNode(Node):
         self.get_logger().info(f"Connected to MQTT broker with code {rc}")
         client.subscribe(MQTT_TOPIC_RECORD)
         client.subscribe(MQTT_TOPIC_GO)
+        client.subscribe(MQTT_TOPIC_TELEOP)  # 🔥 추가됨
 
     def on_message(self, client, userdata, msg):
         try:
             payload = msg.payload.decode('utf-8')
+
+            # ------------------------------
+            # 🔥 TELEOP 처리 (wasd)
+            # ------------------------------
+            if msg.topic == MQTT_TOPIC_TELEOP:
+                cmd = payload.strip().lower()
+
+                twist = Twist()
+                LIN = 0.25
+                ANG = 0.8
+
+                if cmd in ["w", "forward"]:
+                    twist.linear.x = LIN
+                elif cmd in ["s", "back"]:
+                    twist.linear.x = -LIN
+                elif cmd in ["a", "left"]:
+                    twist.angular.z = ANG
+                elif cmd in ["d", "right"]:
+                    twist.angular.z = -ANG
+                elif cmd == "q":  # 전진 + 좌회전
+                    twist.linear.x = LIN
+                    twist.angular.z = ANG
+                elif cmd == "e":  # 전진 + 우회전
+                    twist.linear.x = LIN
+                    twist.angular.z = -ANG
+                elif cmd in ["x", "stop", "0"]:
+                    twist.linear.x = 0.0
+                    twist.angular.z = 0.0
+                else:
+                    self.get_logger().warn(f"Unknown teleop command: {cmd}")
+                    return
+
+                self.cmd_vel_pub.publish(twist)
+                self.get_logger().info(f"[Teleop] cmd='{cmd}' → lin={twist.linear.x}, ang={twist.angular.z}")
+                return
+
+            # ------------------------------
+            # 🔥 기존 JSON 기반 record/go 처리
+            # ------------------------------
             data = json.loads(payload)
             name = data.get("name")
+
             if not name:
                 self.get_logger().warn("No name provided in MQTT message")
                 return
 
             if msg.topic == MQTT_TOPIC_RECORD:
-                # 현재 위치 받아오기 (TF lookup)
                 t = self.tf_lookup()
                 if t is None:
                     self.get_logger().warn("Cannot record pose: TF lookup failed")
                     return
                 self.memory[name] = t
-                self.get_logger().info(f"Recorded pose for '{name}': x={t.pose.position.x:.2f}, y={t.pose.position.y:.2f}")
+                self.get_logger().info(
+                    f"Recorded pose for '{name}': x={t.pose.position.x:.2f}, y={t.pose.position.y:.2f}"
+                )
 
             elif msg.topic == MQTT_TOPIC_GO:
-                # 저장된 위치로 이동
                 if name not in self.memory:
                     self.get_logger().warn(f"No recorded pose for '{name}'")
                     return
                 pose = self.memory[name]
-                # 새로운 timestamp로 갱신
                 pose.header.stamp = self.get_clock().now().to_msg()
                 self.goal_pub.publish(pose)
-                self.get_logger().info(f"Published goal for '{name}': x={pose.pose.position.x:.2f}, y={pose.pose.position.y:.2f}")
+                self.get_logger().info(
+                    f"Published goal for '{name}': x={pose.pose.position.x:.2f}, y={pose.pose.position.y:.2f}"
+                )
 
         except Exception as e:
             self.get_logger().error(f"Error processing MQTT message: {e}")
@@ -91,6 +140,7 @@ class MQTTGoalMemoryNode(Node):
             self.get_logger().warn(f"TF lookup failed: {e}")
             return None
 
+
 def main(args=None):
     rclpy.init(args=args)
     node = MQTTGoalMemoryNode()
@@ -100,6 +150,7 @@ def main(args=None):
         pass
     node.destroy_node()
     rclpy.shutdown()
+
 
 if __name__ == '__main__':
     main()
