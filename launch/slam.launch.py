@@ -28,7 +28,6 @@ def generate_launch_description():
                 "map": ""
             }.items()
         ),
-
         # 3️⃣ map_utils_node 바로 실행
         Node(
             package='echo_slam',

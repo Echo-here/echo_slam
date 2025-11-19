@@ -9,7 +9,7 @@ from tf_transformations import euler_from_quaternion, quaternion_from_euler
 
 # 환경 변수
 MQTT_BROKER = os.getenv("MQTT_BROKER", "localhost")
-MQTT_PORT = int(os.getenv("MQTT_PORT", 1883))
+MQTT_PORT = int(os.getenv("MQTT_PORT", 443))  # 🔹 웹소켓 포트로 변경
 MQTT_TOPIC_RECORD = os.getenv("MQTT_TOPIC_RECORD", "echo/record")
 MQTT_TOPIC_GO = os.getenv("MQTT_TOPIC_GO", "echo/go")
 MQTT_TOPIC_TELEOP = os.getenv("MQTT_TOPIC_TELEOP", "echo/teleop")
@@ -27,26 +27,28 @@ class MQTTGoalMemoryNode(Node):
 
         self.memory = {}  # {name: PoseStamped}
 
-        self.mqtt_client = mqtt.Client()
+        # 🔹 웹소켓용 transport 설정
+        self.mqtt_client = mqtt.Client(transport="websockets")
         self.mqtt_client.on_connect = self.on_connect
         self.mqtt_client.on_message = self.on_message
+        self.mqtt_client.tls_set()
         self.mqtt_client.connect(MQTT_BROKER, MQTT_PORT, 60)
         self.mqtt_client.loop_start()
 
-        self.get_logger().info(f"Node Ready. MQTT Broker={MQTT_BROKER}:{MQTT_PORT}")
+        self.get_logger().info(f"Node Ready. MQTT Broker={MQTT_BROKER}:{MQTT_PORT} (WebSocket)")
 
     def on_connect(self, client, userdata, flags, rc):
         self.get_logger().info(f"Connected to MQTT broker with code {rc}")
         client.subscribe(MQTT_TOPIC_RECORD)
         client.subscribe(MQTT_TOPIC_GO)
-        client.subscribe(MQTT_TOPIC_TELEOP)  # 🔥 추가됨
+        client.subscribe(MQTT_TOPIC_TELEOP)
 
     def on_message(self, client, userdata, msg):
         try:
             payload = msg.payload.decode('utf-8')
 
             # ------------------------------
-            # 🔥 TELEOP 처리 (wasd)
+            # TELEOP 처리 (wasd)
             # ------------------------------
             if msg.topic == MQTT_TOPIC_TELEOP:
                 cmd = payload.strip().lower()
@@ -81,7 +83,7 @@ class MQTTGoalMemoryNode(Node):
                 return
 
             # ------------------------------
-            # 🔥 기존 JSON 기반 record/go 처리
+            # JSON 기반 record/go 처리
             # ------------------------------
             data = json.loads(payload)
             name = data.get("name")
