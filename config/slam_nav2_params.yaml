@@ -1,3 +1,51 @@
+amcl:
+  ros__parameters:
+    use_sim_time: true
+
+    # Motion model noise
+    alpha1: 0.2
+    alpha2: 0.2
+    alpha3: 0.2
+    alpha4: 0.2
+    alpha5: 0.2
+
+    ### 🔥 프레임 설정 (전체 Nav2 config와 일치)
+    base_frame_id: "base_link"
+    global_frame_id: "map"
+    odom_frame_id: "odom"
+
+    ### 🔥 Laser model — 실제 Lidar + costmap 값과 일치하도록 수정
+    laser_model_type: "likelihood_field"
+    scan_topic: "scan"
+    laser_max_range: 8.0         # 라이다 실제 max range와 맞춤 (기존 10 → 8)
+    laser_min_range: 0.1
+    laser_likelihood_max_dist: 2.0
+
+    ### PF (Particle Filter)
+    max_particles: 2000
+    min_particles: 500
+    max_beams: 60
+    resample_interval: 1
+    update_min_d: 0.25
+    update_min_a: 0.2
+
+    ### Likelihood parameters
+    z_hit: 0.5
+    z_short: 0.05
+    z_max: 0.05
+    z_rand: 0.5
+    sigma_hit: 0.2
+    lambda_short: 0.1
+
+    ### Beamskip off
+    do_beamskip: false
+
+    ### TF 처리
+    tf_broadcast: true
+    transform_tolerance: 1.0
+
+    ### Save pose
+    save_pose_rate: 0.5
 bt_navigator:
   ros__parameters:
     use_sim_time: true
