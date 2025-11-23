@@ -130,36 +130,30 @@ class MQTTGoalMemoryNode(Node):
 
 
     # ------------------------------------------------------------
-    # Nav2 상태 감지 (idle / success / fail)
+    # Nav2 상태 감지 → 상태 변경 시 즉시 echo/nav publish
     # ------------------------------------------------------------
     def nav2_status_callback(self, msg: GoalStatusArray):
+        new_state = None
+
+        # Goal 없음 → idle
         if not msg.status_list:
-            # Goal 없음 → idle
-            if self.current_nav_state != "idle":
-                self.current_nav_state = "idle"
-                self.mqtt_client.publish(MQTT_TOPIC_NAV, "idle")
-                self.get_logger().info("[Nav2] idle")
-            return
+            new_state = "idle"
 
-        status = msg.status_list[-1].status
+        else:
+            status = msg.status_list[-1].status
 
-        # SUCCEEDED
-        if status == 4:
-            if self.current_nav_state != "success":
-                self.current_nav_state = "success"
-                self.mqtt_client.publish(MQTT_TOPIC_NAV, "success")
-                self.get_logger().info("[Nav2] success")
-            return
+            if status == 4:
+                new_state = "success"
+            elif status in [5, 6]:
+                new_state = "fail"
+            else:
+                return  # 이동 중일 때는 nav 상태 broadcast 하지 않음
 
-        # ABORTED or CANCELED → fail
-        if status in [5, 6]:
-            if self.current_nav_state != "fail":
-                self.current_nav_state = "fail"
-                self.mqtt_client.publish(MQTT_TOPIC_NAV, "fail")
-                self.get_logger().info("[Nav2] fail")
-            return
-
-        # 그 외 상태는 이동 중 → 방송하지 않음
+        # 상태 변경 시 즉시 전송
+        if new_state != self.current_nav_state:
+            self.current_nav_state = new_state
+            self.mqtt_client.publish(MQTT_TOPIC_NAV, new_state)
+            self.get_logger().info(f"[Nav2] {new_state}")
 
 
     # ------------------------------------------------------------
