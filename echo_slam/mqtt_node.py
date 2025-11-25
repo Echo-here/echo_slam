@@ -118,6 +118,10 @@ class MQTTGoalMemoryNode(Node):
                 if name not in self.memory:
                     self.get_logger().warn(f"No record for '{name}'")
                     return
+                # order_id 자동 저장
+                self.current_order_id = data.get("order_id")
+                if self.current_order_id:
+                    self.get_logger().info(f"[Go] order_id set to {self.current_order_id}")
 
                 pose = self.memory[name]
                 pose.header.stamp = self.get_clock().now().to_msg()
@@ -154,6 +158,18 @@ class MQTTGoalMemoryNode(Node):
             self.current_nav_state = new_state
             self.mqtt_client.publish(MQTT_TOPIC_NAV, new_state)
             self.get_logger().info(f"[Nav2] {new_state}")
+
+            # 배달 완료 시 order/finish 발행
+        if new_state == "success":
+            try:
+                if self.current_order_id:  # 현재 처리 중인 order_id 확인
+                    payload = json.dumps({"order_id": self.current_order_id})
+                    self.mqtt_client.publish("order/finish", payload)
+                    self.get_logger().info(f"[Order/Finish] → {payload}")
+                    # 완료 후 current_order_id 초기화
+                    self.current_order_id = None
+            except Exception as e:
+                self.get_logger().error(f"Failed to publish order/finish: {e}")
 
 
     # ------------------------------------------------------------
