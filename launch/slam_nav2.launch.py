@@ -35,8 +35,7 @@ def generate_launch_description():
                 ])
             ]),
             launch_arguments={
-                "use_sim_time": "False",
-                "params_file": slam_nav2_params_file
+                "use_sim_time": "False"
             }.items()
         ),
         # 3️⃣ map_utils_node 바로 실행
