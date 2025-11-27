@@ -17,7 +17,7 @@ amcl:
     ### 🔥 Laser model — 실제 Lidar + costmap 값과 일치하도록 수정
     laser_model_type: "likelihood_field"
     scan_topic: "scan"
-    laser_max_range: 8.0         # 라이다 실제 max range와 맞춤 (기존 10 → 8)
+    laser_max_range: 8.0
     laser_min_range: 0.1
     laser_likelihood_max_dist: 2.0
 
@@ -46,6 +46,7 @@ amcl:
 
     ### Save pose
     save_pose_rate: 0.5
+
 bt_navigator:
   ros__parameters:
     use_sim_time: false
@@ -113,9 +114,9 @@ local_costmap:
       global_frame: odom
       robot_base_frame: base_link
       rolling_window: true
-      width: 3.0
-      height: 3.0
-      resolution: 0.02          # ✅ 고해상도
+      width: 3        # int
+      height: 3       # int
+      resolution: 0.02
       robot_radius: 0.22
 
       plugins: ["safety_layer", "voxel_layer", "inflation_layer"]
@@ -168,9 +169,11 @@ global_costmap:
       global_frame: map
       robot_base_frame: base_link
       robot_radius: 0.22
-      resolution: 0.02          # ✅ 고해상도
+      resolution: 0.02
       track_unknown_space: true
       plugins: ["static_layer", "obstacle_layer", "inflation_layer"]
+      width: 3        # int
+      height: 3       # int
 
       obstacle_layer:
         plugin: "nav2_costmap_2d::ObstacleLayer"
@@ -230,7 +233,7 @@ slam_toolbox:
     odom_frame: odom
     base_frame: base_link
     scan_topic: /scan
-    resolution: 0.02             # ✅ 고해상도 맵
+    resolution: 0.02
     transform_publish_period: 0.02
     map_update_interval: 5.0
     min_laser_range: 0.1
