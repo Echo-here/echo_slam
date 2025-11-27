@@ -8,7 +8,6 @@ from action_msgs.msg import GoalStatusArray
 import paho.mqtt.client as mqtt
 from tf_transformations import euler_from_quaternion, quaternion_from_euler
 
-
 # ------------------------------------------------------------
 # 환경변수
 # ------------------------------------------------------------
@@ -25,7 +24,6 @@ MQTT_TOPIC_VALUE = os.getenv("MQTT_TOPIC_VALUE", "echo/record/value")
 MQTT_TOPIC_NAV = os.getenv("MQTT_TOPIC_NAV", "echo/nav")
 MQTT_TOPIC_NAV_GET = os.getenv("MQTT_TOPIC_NAV_GET", "echo/nav/get")
 
-
 # ------------------------------------------------------------
 # 메인 노드
 # ------------------------------------------------------------
@@ -33,10 +31,7 @@ class MQTTGoalMemoryNode(Node):
     def __init__(self):
         super().__init__('mqtt_goal_memory_node')
 
-        # 현재 Nav2 상태 (idle / success / fail)
         self.current_nav_state = "idle"
-
-        # pose 저장 딕셔너리
         self.memory = {}
 
         # ROS Publishers
@@ -61,7 +56,6 @@ class MQTTGoalMemoryNode(Node):
 
         self.get_logger().info("MQTT Goal Memory Node initialized.")
 
-
     # ------------------------------------------------------------
     # MQTT connect
     # ------------------------------------------------------------
@@ -72,7 +66,6 @@ class MQTTGoalMemoryNode(Node):
         client.subscribe(MQTT_TOPIC_GET)
         client.subscribe(MQTT_TOPIC_NAV_GET)
         self.get_logger().info("MQTT connected & subscribed.")
-
 
     # ------------------------------------------------------------
     # MQTT message handler
@@ -92,85 +85,77 @@ class MQTTGoalMemoryNode(Node):
                 self.handle_teleop(payload)
                 return
 
-            # Record 목록 요청
-            if msg.topic == MQTT_TOPIC_GET:
-                self.publish_record_keys()
-                return
-
-            # JSON 데이터 처리
-            data = json.loads(payload)
-            name = data.get("name")
-
-            if not name:
-                self.get_logger().warn("JSON has no 'name'")
-                return
-
-            # Record 저장
-            if msg.topic == MQTT_TOPIC_RECORD:
-                pose = self.tf_lookup()
-                if pose:
-                    self.memory[name] = pose
-                    self.get_logger().info(f"[Record] '{name}' saved")
-                return
-
-            # 저장된 위치로 이동
-            elif msg.topic == MQTT_TOPIC_GO:
-                if name not in self.memory:
-                    self.get_logger().warn(f"No record for '{name}'")
+            # Record / Go / Get 처리
+            if msg.topic in [MQTT_TOPIC_RECORD, MQTT_TOPIC_GO, MQTT_TOPIC_GET]:
+                try:
+                    data = json.loads(payload)
+                except json.JSONDecodeError:
+                    self.get_logger().warn(f"Payload is not JSON: {payload}")
                     return
-                # order_id 자동 저장
-                self.current_order_id = data.get("order_id")
-                if self.current_order_id:
-                    self.get_logger().info(f"[Go] order_id set to {self.current_order_id}")
 
-                pose = self.memory[name]
-                pose.header.stamp = self.get_clock().now().to_msg()
-                self.goal_pub.publish(pose)
-                self.get_logger().info(f"[Go] Moving to '{name}'")
-                return
+                name = data.get("name")
+                if not name:
+                    self.get_logger().warn("JSON has no 'name'")
+                    return
+
+                # Record 저장
+                if msg.topic == MQTT_TOPIC_RECORD:
+                    pose = self.tf_lookup()
+                    if pose:
+                        self.memory[name] = pose
+                        self.get_logger().info(f"[Record] '{name}' saved")
+                    return
+
+                # 저장된 위치로 이동
+                elif msg.topic == MQTT_TOPIC_GO:
+                    if name not in self.memory:
+                        self.get_logger().warn(f"No record for '{name}'")
+                        return
+                    self.current_order_id = data.get("order_id")
+                    if self.current_order_id:
+                        self.get_logger().info(f"[Go] order_id set to {self.current_order_id}")
+
+                    pose = self.memory[name]
+                    pose.header.stamp = self.get_clock().now().to_msg()
+                    self.goal_pub.publish(pose)
+                    self.get_logger().info(f"[Go] Moving to '{name}'")
+                    return
+
+                # Record 목록 요청
+                elif msg.topic == MQTT_TOPIC_GET:
+                    self.publish_record_keys()
+                    return
 
         except Exception as e:
             self.get_logger().error(f"MQTT message error: {e}")
 
-
     # ------------------------------------------------------------
-    # Nav2 상태 감지 → 상태 변경 시 즉시 echo/nav publish
+    # Nav2 상태 감지
     # ------------------------------------------------------------
     def nav2_status_callback(self, msg: GoalStatusArray):
         new_state = None
-
-        # Goal 없음 → idle
         if not msg.status_list:
             new_state = "idle"
-
         else:
             status = msg.status_list[-1].status
-
             if status == 4:
                 new_state = "success"
             elif status in [5, 6]:
                 new_state = "fail"
             else:
-                return  # 이동 중일 때는 nav 상태 broadcast 하지 않음
+                return
 
-        # 상태 변경 시 즉시 전송
         if new_state != self.current_nav_state:
             self.current_nav_state = new_state
             self.mqtt_client.publish(MQTT_TOPIC_NAV, new_state)
             self.get_logger().info(f"[Nav2] {new_state}")
 
-            # 배달 완료 시 order/finish 발행
-        if new_state == "success":
-            try:
-                if self.current_order_id:  # 현재 처리 중인 order_id 확인
-                    payload = json.dumps({"order_id": self.current_order_id})
-                    self.mqtt_client.publish("order/finish", payload)
-                    self.get_logger().info(f"[Order/Finish] → {payload}")
-                    # 완료 후 current_order_id 초기화
-                    self.current_order_id = None
-            except Exception as e:
-                self.get_logger().error(f"Failed to publish order/finish: {e}")
-
+            # 완료 시 order/finish 발행
+            if new_state == "success" and hasattr(self, 'current_order_id') and self.current_order_id:
+                payload = json.dumps({"order_id": self.current_order_id})
+                self.mqtt_client.publish("order/finish", payload)
+                self.get_logger().info(f"[Order/Finish] → {payload}")
+                self.current_order_id = None
 
     # ------------------------------------------------------------
     # teleop 제어
@@ -201,7 +186,6 @@ class MQTTGoalMemoryNode(Node):
         else:
             self.get_logger().warn(f"Unknown teleop command: {cmd}")
 
-
     # ------------------------------------------------------------
     # Record 목록 MQTT 발행
     # ------------------------------------------------------------
@@ -210,7 +194,6 @@ class MQTTGoalMemoryNode(Node):
         msg = json.dumps(keys)
         self.mqtt_client.publish(MQTT_TOPIC_VALUE, msg)
         self.get_logger().info(f"[Record/Get] → {keys}")
-
 
     # ------------------------------------------------------------
     # TF lookup (map → base_link)
@@ -225,9 +208,9 @@ class MQTTGoalMemoryNode(Node):
 
             pose = PoseStamped()
             pose.header.frame_id = 'map'
-            pose.pose.position.x = t.transform.translation.x
-            pose.pose.position.y = t.transform.translation.y
-            pose.pose.position.z = t.transform.translation.z
+            pose.pose.position.x = float(t.transform.translation.x)
+            pose.pose.position.y = float(t.transform.translation.y)
+            pose.pose.position.z = float(t.transform.translation.z)
 
             q = t.transform.rotation
             _, _, yaw = euler_from_quaternion([q.x, q.y, q.z, q.w])
